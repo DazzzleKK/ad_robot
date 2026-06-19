@@ -109,6 +109,10 @@ body {
 
 .bar {
   fill: #2f70f3;
+  fill-opacity: 0.5;
+  stroke: #ffffff;
+  stroke-width: 2;
+  pointer-events: none;
 }
 
 .spline-line {
@@ -259,6 +263,55 @@ body {
 .chart-tooltip--visible {
   opacity: 1;
   scale: 1;
+}
+
+.data-editor {
+  margin-top: 14px;
+  color: #26313a;
+  font-size: 14px;
+}
+
+.data-editor summary {
+  width: max-content;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.data-editor__textarea {
+  display: block;
+  width: 100%;
+  min-height: 280px;
+  margin-top: 10px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid #bfc8c4;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font: 13px/1.45 Consolas, 'Courier New', monospace;
+}
+
+.data-editor__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.data-editor__button {
+  min-width: 78px;
+  height: 34px;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f1f1f;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.data-editor__error {
+  color: #a51f1f;
 }
 
 .tooltip-date {

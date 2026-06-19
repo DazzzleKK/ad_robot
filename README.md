@@ -26,40 +26,41 @@ npm run test:e2e
 
 The test starts the Vite dev server, opens the chart in Chromium, checks hover behavior, and writes screenshots to `playwright-report-screens/`.
 
-## Usage
+## Initialize Data
+
+The demo loads chart data from `public/data.json`. Edit that file and refresh the page to initialize the chart with your own data.
+
+You can also open **Data JSON** under the chart, paste JSON, and click **Apply** without editing source files.
+
+Expected JSON shape:
+
+```json
+{
+  "area": [
+    { "date": "10.06.2026", "value": 28.6 },
+    { "date": "11.06.2026", "value": 28.6 },
+    { "date": "12.06.2026", "value": 43.1 },
+    { "date": "14.06.2026", "value": 64.8 }
+  ],
+  "spline": [
+    { "date": "10.06.2026", "value": 610.78 },
+    { "date": "13.06.2026", "value": 56.33 }
+  ],
+  "line": [
+    { "date": "10.06.2026", "value": 3 },
+    { "date": "13.06.2026", "value": 70 }
+  ],
+  "bar": [
+    { "date": "10.06.2026", "value": 0.68 },
+    { "date": "13.06.2026", "value": 0.79 }
+  ]
+}
+```
+
+## Component API
 
 ```tsx
 import { TimeSeriesChart, type TimeSeriesChartData } from './components/TimeSeriesChart';
-
-const data: TimeSeriesChartData = {
-  area: [
-    { date: '10.06.2026', value: 28.6 },
-    { date: '11.06.2026', value: 28.6 },
-    { date: '12.06.2026', value: 43.1 },
-    { date: '14.06.2026', value: 64.8 },
-  ],
-  spline: [
-    { date: '10.06.2026', value: 610.78 },
-    { date: '11.06.2026', value: 180.1 },
-    { date: '12.06.2026', value: 174.4 },
-    { date: '13.06.2026', value: 56.33 },
-    { date: '14.06.2026', value: 352.2 },
-  ],
-  line: [
-    { date: '10.06.2026', value: 3 },
-    { date: '11.06.2026', value: 29 },
-    { date: '12.06.2026', value: 34 },
-    { date: '13.06.2026', value: 70 },
-    { date: '14.06.2026', value: 88 },
-  ],
-  bar: [
-    { date: '10.06.2026', value: 0.68 },
-    { date: '11.06.2026', value: 0.74 },
-    { date: '12.06.2026', value: 0.81 },
-    { date: '13.06.2026', value: 0.79 },
-    { date: '14.06.2026', value: 0.72 },
-  ],
-};
 
 export function Example() {
   return <TimeSeriesChart data={data} width={1000} height={400} />;

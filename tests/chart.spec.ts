@@ -49,6 +49,10 @@ test('chart hover interactions match expected behavior', async ({ page }) => {
     expect(separated).toBe(true);
   }
 
+  await page.mouse.move(box.x + 380, box.y + 235);
+  await expect(tooltip).toHaveCSS('opacity', '1');
+  await expect(tooltip).toContainText('12.06.2026');
+
   await page.mouse.move(box.x + 145, box.y + 72);
   await page.waitForTimeout(550);
   await expect(spline).toHaveCSS('stroke-width', '2px');
@@ -60,4 +64,32 @@ test('chart hover interactions match expected behavior', async ({ page }) => {
   await page.mouse.move(box.x + box.width + 30, box.y + box.height + 30);
   await expect(tooltip).toHaveCSS('opacity', '0');
   await expect(activeHoverPoints).toHaveCount(0);
+});
+
+test('chart can be initialized from JSON editor', async ({ page }) => {
+  await page.goto('/');
+
+  await page.locator('.data-editor summary').click();
+
+  const textarea = page.locator('.data-editor__textarea');
+  await expect(textarea).toBeVisible();
+
+  await textarea.fill(JSON.stringify({
+    area: [{ date: '01.07.2026', value: 10 }],
+    spline: [{ date: '01.07.2026', value: 20 }],
+    line: [{ date: '01.07.2026', value: 30 }],
+    bar: [{ date: '01.07.2026', value: 0.5 }],
+  }, null, 2));
+  await page.locator('.data-editor__button').click();
+
+  const chart = page.locator('.chart-shell');
+  const box = await chart.boundingBox();
+  expect(box).not.toBeNull();
+
+  if (!box) {
+    return;
+  }
+
+  await page.mouse.move(box.x + 150, box.y + 180);
+  await expect(page.locator('.chart-tooltip')).toContainText('01.07.2026');
 });

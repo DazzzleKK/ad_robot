@@ -183,7 +183,7 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
     const yForAreaValue = (value: number) => bottom - ((value - areaRange.min) / areaRange.span) * 250;
     const yForSplineValue = (value: number) => bottom - ((value - splineRange.min) / splineRange.span) * 240;
     const yForLineValue = (value: number) => bottom - ((value - lineRange.min) / lineRange.span) * 220 - 4;
-    const yForBarValue = (value: number) => bottom - Math.max(3, ((value - barRange.min) / barRange.span) * 12);
+    const yForBarValue = (value: number) => bottom - Math.max(8, ((value - barRange.min) / barRange.span) * 140);
 
     const toPoints = (values: Array<number | null>, yForValue: (value: number) => number) =>
       values.flatMap((value, index) =>
@@ -291,22 +291,15 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
       <div className="chart-scroll" ref={scrollRef}>
         <div className="chart-stage" style={{ width: metrics.canvasWidth, height: metrics.canvasHeight }}>
           <svg className="chart-svg" width={metrics.canvasWidth} height={metrics.canvasHeight} viewBox={`0 0 ${metrics.canvasWidth} ${metrics.canvasHeight}`}>
+            <defs>
+              <clipPath id="plot-clip">
+                <rect x={metrics.chart.x} y={metrics.chart.y} width={metrics.chart.width} height={metrics.chart.height} />
+              </clipPath>
+            </defs>
             <rect className="plot-frame" x={metrics.chart.x} y={metrics.chart.y} width={metrics.chart.width} height={metrics.chart.height} />
 
             <path className="area-fill" d={paths.area} />
             <path className="area-top-line" d={createSmoothPath(metrics.points.area)} />
-
-            {metrics.points.bar.map((point) => (
-              <rect
-                key={`bar-${point.x}`}
-                className="bar"
-                x={point.x - 17}
-                y={point.y}
-                width={34}
-                height={metrics.bottom - point.y + 3}
-                rx={4}
-              />
-            ))}
 
             <path
               className={`spline-line ${isSplineHovered ? 'spline-line--hovered' : ''}`}
@@ -377,6 +370,20 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
                   </g>
                 );
               })}
+            </g>
+
+            <g clipPath="url(#plot-clip)">
+              {metrics.points.bar.map((point) => (
+                <rect
+                  key={`bar-${point.x}`}
+                  className="bar"
+                  x={point.x - 11}
+                  y={point.y}
+                  width={22}
+                  height={metrics.bottom - point.y + 3}
+                  rx={4}
+                />
+              ))}
             </g>
           </svg>
 
