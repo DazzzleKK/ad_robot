@@ -1,11 +1,34 @@
 import { TimeSeriesChart, type TimeSeriesChartData } from './components/TimeSeriesChart';
 
 const demoData: TimeSeriesChartData = {
-  labels: ['10.06.2026', '11.06.2026', '12.06.2026', '13.06.2026', '14.06.2026'],
-  area: [2.04, 28.6, 43.1, 55.65, 64.8],
-  spline: [610.78, 180.1, 174.4, 56.33, 352.2],
-  line: [3, 29, 34, 70, 88],
-  bar: [0.68, 0.74, 0.81, 0.79, 0.72],
+  area: [
+    { date: '10.06.2026', value: 28.6 },
+    { date: '11.06.2026', value: 28.6 },
+    { date: '12.06.2026', value: 43.1 },
+    { date: '13.06.2026', value: 55.65 },
+    { date: '14.06.2026', value: 64.8 },
+  ],
+  spline: [
+    { date: '10.06.2026', value: 610.78 },
+    { date: '11.06.2026', value: 180.1 },
+    { date: '12.06.2026', value: 174.4 },
+    { date: '13.06.2026', value: 56.33 },
+    { date: '14.06.2026', value: 352.2 },
+  ],
+  line: [
+    { date: '10.06.2026', value: 3 },
+    { date: '11.06.2026', value: 29 },
+    { date: '12.06.2026', value: 34 },
+    { date: '13.06.2026', value: 70 },
+    { date: '14.06.2026', value: 88 },
+  ],
+  bar: [
+    { date: '10.06.2026', value: 0.68 },
+    { date: '11.06.2026', value: 0.74 },
+    { date: '12.06.2026', value: 0.81 },
+    { date: '13.06.2026', value: 0.79 },
+    { date: '14.06.2026', value: 0.72 },
+  ],
 };
 
 export function App() {

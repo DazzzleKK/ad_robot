@@ -1,17 +1,30 @@
 import { useMemo, useRef, useState, type MouseEvent } from 'react';
 
 export type TimeSeriesChartData = {
+  area: TimeSeriesChartPoint[];
+  spline: TimeSeriesChartPoint[];
+  line: TimeSeriesChartPoint[];
+  bar: TimeSeriesChartPoint[];
+};
+
+export type TimeSeriesChartPoint = {
+  date: string;
+  value: number;
+};
+
+type NormalizedChartData = {
   labels: string[];
-  area: number[];
-  spline: number[];
-  line: number[];
-  bar: number[];
+  area: Array<number | null>;
+  spline: Array<number | null>;
+  line: Array<number | null>;
+  bar: Array<number | null>;
 };
 
 type Point = {
   x: number;
   y: number;
   value: number;
+  index: number;
 };
 
 type ChartSeries = 'area' | 'spline' | 'line' | 'bar';
@@ -40,17 +53,35 @@ const labels: Record<ChartSeries, string> = {
 const seriesOrder: ChartSeries[] = ['area', 'bar', 'spline', 'line'];
 const splineHoverRadius = 35;
 
-const formatValue = (value: number) =>
+const formatValue = (value: number | null) => {
+  if (value === null) {
+    return '-';
+  }
+
+  return (
   new Intl.NumberFormat('en-US', {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)
+  );
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-const getRange = (values: number[]) => {
-  const min = Math.min(0, ...values);
-  const max = Math.max(...values);
+const parseDateLabel = (date: string) => {
+  const [day, month, year] = date.split('.').map(Number);
+
+  if (!day || !month || !year) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  return new Date(year, month - 1, day).getTime();
+};
+
+const getRange = (values: Array<number | null>) => {
+  const presentValues = values.filter((value): value is number => value !== null);
+  const min = Math.min(0, ...presentValues);
+  const max = Math.max(...presentValues, 1);
 
   return {
     min,
@@ -74,13 +105,28 @@ const distanceToSegment = (x: number, y: number, start: Point, end: Point) => {
   return Math.hypot(x - projectionX, y - projectionY);
 };
 
-const validateData = (data: TimeSeriesChartData) => {
-  const size = data.labels.length;
-  const everySeriesMatches = data.area.length === size && data.spline.length === size && data.line.length === size && data.bar.length === size;
+const normalizeData = (data: TimeSeriesChartData): NormalizedChartData => {
+  const labels = Array.from(new Set(seriesOrder.flatMap((series) => data[series].map((point) => point.date))))
+    .sort((leftDate, rightDate) => parseDateLabel(leftDate) - parseDateLabel(rightDate));
+  const size = labels.length;
 
-  if (!size || !everySeriesMatches) {
-    throw new Error('TimeSeriesChart expects labels, area, spline, line and bar arrays with the same non-zero length.');
+  if (!size) {
+    throw new Error('TimeSeriesChart expects at least one point in any series.');
   }
+
+  const normalizeSeries = (series: ChartSeries) => {
+    const valuesByDate = new Map(data[series].map((point) => [point.date, point.value]));
+
+    return labels.map((date) => valuesByDate.get(date) ?? null);
+  };
+
+  return {
+    labels,
+    area: normalizeSeries('area'),
+    spline: normalizeSeries('spline'),
+    line: normalizeSeries('line'),
+    bar: normalizeSeries('bar'),
+  };
 };
 
 const createLinePath = (points: Point[]) => points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
@@ -110,7 +156,7 @@ const createSmoothPath = (points: Point[]) => {
 };
 
 export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoints = 10 }: Props) {
-  validateData(data);
+  const chartData = useMemo(() => normalizeData(data), [data]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -122,27 +168,39 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
     const chart = {
       x: 82,
       y: 20,
-      width: Math.max(590, data.labels.length > visiblePoints ? 590 + (data.labels.length - visiblePoints) * 110 : 590),
+      width: Math.max(590, chartData.labels.length > visiblePoints ? 590 + (chartData.labels.length - visiblePoints) * 110 : 590),
       height: 294,
     };
-    const canvasWidth = data.labels.length > visiblePoints ? chart.width + 220 : width;
+    const canvasWidth = chartData.labels.length > visiblePoints ? chart.width + 220 : width;
     const canvasHeight = height;
     const bottom = chart.y + chart.height;
-    const areaRange = getRange(data.area);
-    const splineRange = getRange(data.spline);
-    const lineRange = getRange(data.line);
-    const barRange = getRange(data.bar);
-    const xStep = data.labels.length === 1 ? 0 : (chart.width - 112) / (data.labels.length - 1);
+    const areaRange = getRange(chartData.area);
+    const splineRange = getRange(chartData.spline);
+    const lineRange = getRange(chartData.line);
+    const barRange = getRange(chartData.bar);
+    const xStep = chartData.labels.length === 1 ? 0 : (chart.width - 112) / (chartData.labels.length - 1);
     const xForIndex = (index: number) => chart.x + 60 + index * xStep;
     const yForAreaValue = (value: number) => bottom - ((value - areaRange.min) / areaRange.span) * 250;
     const yForSplineValue = (value: number) => bottom - ((value - splineRange.min) / splineRange.span) * 240;
     const yForLineValue = (value: number) => bottom - ((value - lineRange.min) / lineRange.span) * 220 - 4;
     const yForBarValue = (value: number) => bottom - Math.max(3, ((value - barRange.min) / barRange.span) * 12);
 
-    const areaPoints = data.area.map((value, index) => ({ x: xForIndex(index), y: yForAreaValue(value), value }));
-    const splinePoints = data.spline.map((value, index) => ({ x: xForIndex(index), y: yForSplineValue(value), value }));
-    const linePoints = data.line.map((value, index) => ({ x: xForIndex(index), y: yForLineValue(value), value }));
-    const barPoints = data.bar.map((value, index) => ({ x: xForIndex(index), y: yForBarValue(value), value }));
+    const toPoints = (values: Array<number | null>, yForValue: (value: number) => number) =>
+      values.flatMap((value, index) =>
+        value === null
+          ? []
+          : [{
+              x: xForIndex(index),
+              y: yForValue(value),
+              value,
+              index,
+            }],
+      );
+
+    const areaPoints = toPoints(chartData.area, yForAreaValue);
+    const splinePoints = toPoints(chartData.spline, yForSplineValue);
+    const linePoints = toPoints(chartData.line, yForLineValue);
+    const barPoints = toPoints(chartData.bar, yForBarValue);
 
     return {
       chart,
@@ -156,14 +214,20 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
         line: linePoints,
         bar: barPoints,
       },
+      pointByIndex: {
+        area: new Map(areaPoints.map((point) => [point.index, point])),
+        spline: new Map(splinePoints.map((point) => [point.index, point])),
+        line: new Map(linePoints.map((point) => [point.index, point])),
+        bar: new Map(barPoints.map((point) => [point.index, point])),
+      },
     };
-  }, [data, height, visiblePoints, width]);
+  }, [chartData, height, visiblePoints, width]);
 
   const paths = useMemo(() => {
     const areaTop = createSmoothPath(metrics.points.area);
     const firstArea = metrics.points.area[0];
     const lastArea = metrics.points.area[metrics.points.area.length - 1];
-    const areaPath = `${areaTop} L ${lastArea.x} ${metrics.bottom} L ${firstArea.x} ${metrics.bottom} Z`;
+    const areaPath = firstArea && lastArea ? `${areaTop} L ${lastArea.x} ${metrics.bottom} L ${firstArea.x} ${metrics.bottom} Z` : '';
 
     return {
       area: areaPath,
@@ -202,7 +266,7 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
       return distanceToSegment(localPoint.x, localPoint.y, point, next) < splineHoverRadius;
     });
 
-    const nextIndex = clamp(nearest, 0, data.labels.length - 1);
+    const nextIndex = clamp(nearest, 0, chartData.labels.length - 1);
 
     setHoverIndex(nextIndex);
     setTooltipIndex(nextIndex);
@@ -274,27 +338,45 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
             />
 
             <g className="hover-points">
-              {data.labels.map((label, index) => (
-                <g className={`hover-point-set ${hoverIndex === index ? 'hover-point-set--visible' : ''}`} key={`hover-point-set-${label}`}>
-                  <circle className="hover-point-visual area-point-halo" cx={metrics.points.area[index].x} cy={metrics.points.area[index].y} r={19} />
-                  <circle className="hover-point-visual area-point" cx={metrics.points.area[index].x} cy={metrics.points.area[index].y} r={4} />
+              {chartData.labels.map((label, index) => {
+                const areaPoint = metrics.pointByIndex.area.get(index);
+                const splinePoint = metrics.pointByIndex.spline.get(index);
+                const linePoint = metrics.pointByIndex.line.get(index);
 
-                  <circle className="hover-point-visual spline-point-halo" cx={metrics.points.spline[index].x} cy={metrics.points.spline[index].y} r={19} />
-                  <polygon
-                    className="hover-point-visual spline-point"
-                    points={[
-                      `${metrics.points.spline[index].x},${metrics.points.spline[index].y - 6}`,
-                      `${metrics.points.spline[index].x + 6},${metrics.points.spline[index].y}`,
-                      `${metrics.points.spline[index].x},${metrics.points.spline[index].y + 6}`,
-                      `${metrics.points.spline[index].x - 6},${metrics.points.spline[index].y}`,
-                    ].join(' ')}
-                  />
+                return (
+                  <g className={`hover-point-set ${hoverIndex === index ? 'hover-point-set--visible' : ''}`} key={`hover-point-set-${label}`}>
+                    {areaPoint && (
+                      <>
+                        <circle className="hover-point-visual area-point-halo" cx={areaPoint.x} cy={areaPoint.y} r={19} />
+                        <circle className="hover-point-visual area-point" cx={areaPoint.x} cy={areaPoint.y} r={4} />
+                      </>
+                    )}
 
-                  <circle className="hover-point-visual line-point-halo" cx={metrics.points.line[index].x} cy={metrics.points.line[index].y} r={19} />
-                  <rect className="line-hover-fill" x={metrics.points.line[index].x - 6} y={metrics.points.line[index].y - 6} width={12} height={12} />
-                  <rect className="line-hover-marker" x={metrics.points.line[index].x - 6} y={metrics.points.line[index].y - 6} width={12} height={12} />
-                </g>
-              ))}
+                    {splinePoint && (
+                      <>
+                        <circle className="hover-point-visual spline-point-halo" cx={splinePoint.x} cy={splinePoint.y} r={19} />
+                        <polygon
+                          className="hover-point-visual spline-point"
+                          points={[
+                            `${splinePoint.x},${splinePoint.y - 6}`,
+                            `${splinePoint.x + 6},${splinePoint.y}`,
+                            `${splinePoint.x},${splinePoint.y + 6}`,
+                            `${splinePoint.x - 6},${splinePoint.y}`,
+                          ].join(' ')}
+                        />
+                      </>
+                    )}
+
+                    {linePoint && (
+                      <>
+                        <circle className="hover-point-visual line-point-halo" cx={linePoint.x} cy={linePoint.y} r={19} />
+                        <rect className="line-hover-fill" x={linePoint.x - 6} y={linePoint.y - 6} width={12} height={12} />
+                        <rect className="line-hover-marker" x={linePoint.x - 6} y={linePoint.y - 6} width={12} height={12} />
+                      </>
+                    )}
+                  </g>
+                );
+              })}
             </g>
           </svg>
 
@@ -306,12 +388,12 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
               transform: tooltipTransform,
             }}
           >
-            <div className="tooltip-date">{data.labels[tooltipIndex]}</div>
+            <div className="tooltip-date">{chartData.labels[tooltipIndex]}</div>
             {seriesOrder.map((series) => (
               <div className="tooltip-row" key={series}>
                 <span className="tooltip-dot" style={{ background: colors[series] }} />
                 <span>{labels[series]}: </span>
-                <strong>{formatValue(data[series][tooltipIndex])}</strong>
+                <strong>{formatValue(chartData[series][tooltipIndex])}</strong>
               </div>
             ))}
           </div>
