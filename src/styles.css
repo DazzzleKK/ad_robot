@@ -265,20 +265,83 @@ body {
   scale: 1;
 }
 
+.point-editor,
 .data-editor {
   margin-top: 14px;
   color: #26313a;
   font-size: 14px;
 }
 
+.point-editor summary,
 .data-editor summary {
   width: max-content;
   cursor: pointer;
   font-weight: 700;
 }
 
+.point-editor {
+  padding-top: 2px;
+}
+
+.point-editor__grid {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.point-editor__field {
+  display: grid;
+  gap: 5px;
+}
+
+.point-editor__field span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4f5961;
+}
+
+.point-editor__field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #bfc8c4;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font: inherit;
+}
+
+.point-editor__field input:focus,
+.data-editor__textarea:focus {
+  border-color: #7b8794;
+  outline: 2px solid rgba(47, 112, 243, 0.16);
+}
+
+.point-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.point-editor__button,
 .data-editor__textarea {
   display: block;
+}
+
+.point-editor__button {
+  min-width: 98px;
+  height: 34px;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f1f1f;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.data-editor__textarea {
   width: 100%;
   min-height: 280px;
   margin-top: 10px;
@@ -357,5 +420,9 @@ body {
 
   .chart-heading p {
     margin-top: 4px;
+  }
+
+  .point-editor__grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { TimeSeriesChart, type TimeSeriesChartData } from './components/TimeSeriesChart';
 
+type SeriesName = keyof TimeSeriesChartData;
+
+type PointFormState = {
+  date: string;
+  area: string;
+  spline: string;
+  line: string;
+  bar: string;
+};
+
 const fallbackData: TimeSeriesChartData = {
   area: [
     { date: '10.06.2026', value: 28.6 },
@@ -31,6 +41,18 @@ const fallbackData: TimeSeriesChartData = {
   ],
 };
 
+const seriesNames: SeriesName[] = ['area', 'spline', 'line', 'bar'];
+
+const formatDateInput = (value: string) => {
+  const [year, month, day] = value.split('-');
+
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return `${day}.${month}.${year}`;
+};
+
 const isChartData = (value: unknown): value is TimeSeriesChartData => {
   if (!value || typeof value !== 'object') {
     return false;
@@ -55,6 +77,19 @@ export function App() {
   const [data, setData] = useState<TimeSeriesChartData>(fallbackData);
   const [jsonInput, setJsonInput] = useState(() => JSON.stringify(fallbackData, null, 2));
   const [error, setError] = useState<string | null>(null);
+  const [pointForm, setPointForm] = useState<PointFormState>({
+    date: '',
+    area: '',
+    spline: '',
+    line: '',
+    bar: '',
+  });
+
+  const commitData = (nextData: TimeSeriesChartData) => {
+    setData(nextData);
+    setJsonInput(JSON.stringify(nextData, null, 2));
+    setError(null);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -71,9 +106,7 @@ export function App() {
           throw new Error('/data.json does not match TimeSeriesChartData.');
         }
 
-        setData(nextData);
-        setJsonInput(JSON.stringify(nextData, null, 2));
-        setError(null);
+        commitData(nextData);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load /data.json.');
       }
@@ -90,11 +123,68 @@ export function App() {
         throw new Error('JSON must contain area, spline, line and bar arrays with { date, value } points.');
       }
 
-      setData(nextData);
-      setError(null);
+      commitData(nextData);
     } catch (applyError) {
       setError(applyError instanceof Error ? applyError.message : 'Invalid JSON.');
     }
+  };
+
+  const updatePointForm = (field: keyof PointFormState, value: string) => {
+    setPointForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  };
+
+  const addPoint = () => {
+    const date = formatDateInput(pointForm.date.trim());
+
+    if (!date) {
+      setError('Date is required.');
+      return;
+    }
+
+    const nextData = structuredClone(data);
+    let addedSeriesCount = 0;
+
+    for (const seriesName of seriesNames) {
+      const rawValue = pointForm[seriesName].trim();
+
+      if (!rawValue) {
+        continue;
+      }
+
+      const value = Number(rawValue);
+
+      if (!Number.isFinite(value)) {
+        setError(`${seriesName} value must be a number.`);
+        return;
+      }
+
+      const pointIndex = nextData[seriesName].findIndex((point) => point.date === date);
+
+      if (pointIndex === -1) {
+        nextData[seriesName].push({ date, value });
+      } else {
+        nextData[seriesName][pointIndex] = { date, value };
+      }
+
+      addedSeriesCount += 1;
+    }
+
+    if (!addedSeriesCount) {
+      setError('Fill at least one series value.');
+      return;
+    }
+
+    commitData(nextData);
+    setPointForm({
+      date: '',
+      area: '',
+      spline: '',
+      line: '',
+      bar: '',
+    });
   };
 
   return (
@@ -105,6 +195,61 @@ export function App() {
           <p>Custom SVG implementation, JSON-configurable data.</p>
         </div>
         <TimeSeriesChart data={data} />
+
+        <details className="point-editor">
+          <summary>Add point</summary>
+          <div className="point-editor__grid">
+            <label className="point-editor__field">
+              <span>Date</span>
+              <input
+                type="date"
+                value={pointForm.date}
+                onChange={(event) => updatePointForm('date', event.target.value)}
+              />
+            </label>
+            <label className="point-editor__field">
+              <span>Cost (area)</span>
+              <input
+                value={pointForm.area}
+                inputMode="decimal"
+                placeholder="64.8"
+                onChange={(event) => updatePointForm('area', event.target.value)}
+              />
+            </label>
+            <label className="point-editor__field">
+              <span>ROI confirmed (spline)</span>
+              <input
+                value={pointForm.spline}
+                inputMode="decimal"
+                placeholder="352.2"
+                onChange={(event) => updatePointForm('spline', event.target.value)}
+              />
+            </label>
+            <label className="point-editor__field">
+              <span>Conversions (line)</span>
+              <input
+                value={pointForm.line}
+                inputMode="decimal"
+                placeholder="88"
+                onChange={(event) => updatePointForm('line', event.target.value)}
+              />
+            </label>
+            <label className="point-editor__field">
+              <span>CPA (bar)</span>
+              <input
+                value={pointForm.bar}
+                inputMode="decimal"
+                placeholder="0.72"
+                onChange={(event) => updatePointForm('bar', event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="point-editor__footer">
+            <button className="point-editor__button" type="button" onClick={addPoint}>
+              Add point
+            </button>
+          </div>
+        </details>
 
         <details className="data-editor">
           <summary>Data JSON</summary>
