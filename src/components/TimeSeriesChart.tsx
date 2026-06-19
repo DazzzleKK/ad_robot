@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 
 export type TimeSeriesChartData = {
   area: TimeSeriesChartPoint[];
@@ -33,7 +33,6 @@ type Props = {
   data: TimeSeriesChartData;
   width?: number;
   height?: number;
-  visiblePoints?: number;
 };
 
 const colors: Record<ChartSeries, string> = {
@@ -155,42 +154,69 @@ const createSmoothPath = (points: Point[]) => {
   return commands.join(' ');
 };
 
-export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoints = 10 }: Props) {
+export function TimeSeriesChart({ data, width = 1000, height = 450 }: Props) {
   const chartData = useMemo(() => normalizeData(data), [data]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [viewportStart, setViewportStart] = useState(0);
+  const [isMinimapDragging, setIsMinimapDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tooltipIndex, setTooltipIndex] = useState(0);
   const [tooltipPoint, setTooltipPoint] = useState({ x: 0, y: 0 });
   const [isSplineHovered, setIsSplineHovered] = useState(false);
 
   const metrics = useMemo(() => {
+    const totalPoints = chartData.labels.length;
+    const maxZoom = Math.max(1, totalPoints / 2);
+    const safeZoom = clamp(zoom, 1, maxZoom);
+    const visibleCount = Math.min(totalPoints, Math.max(2, Math.ceil(totalPoints / safeZoom)));
+    const maxViewportStart = Math.max(0, totalPoints - visibleCount);
+    const safeViewportStart = clamp(viewportStart, 0, maxViewportStart);
+    const viewportEnd = safeViewportStart + visibleCount;
+    const innerWidth = Math.round(width * 0.85);
+    const innerX = Math.round((width - innerWidth) / 2);
     const chart = {
-      x: 82,
+      x: innerX,
       y: 20,
-      width: Math.max(590, chartData.labels.length > visiblePoints ? 590 + (chartData.labels.length - visiblePoints) * 110 : 590),
-      height: 294,
+      width: innerWidth,
+      height: Math.round(height * 0.85) - 44,
     };
-    const canvasWidth = chartData.labels.length > visiblePoints ? chart.width + 220 : width;
+    const minimap = {
+      x: chart.x,
+      y: Math.round(height * 0.85) + 2,
+      width: chart.width,
+      height: 30,
+    };
+    const zoomControl = {
+      x: chart.x,
+      y: minimap.y + minimap.height + 14,
+      width: chart.width,
+    };
+    const canvasWidth = width;
     const canvasHeight = height;
     const bottom = chart.y + chart.height;
     const areaRange = getRange(chartData.area);
     const splineRange = getRange(chartData.spline);
     const lineRange = getRange(chartData.line);
     const barRange = getRange(chartData.bar);
-    const xStep = chartData.labels.length === 1 ? 0 : (chart.width - 112) / (chartData.labels.length - 1);
-    const xForIndex = (index: number) => chart.x + 60 + index * xStep;
+    const xStep = visibleCount === 1 ? 0 : (chart.width - 112) / (visibleCount - 1);
+    const xForIndex = (index: number) => chart.x + 60 + (index - safeViewportStart) * xStep;
+    const minimapXStep = totalPoints === 1 ? 0 : minimap.width / (totalPoints - 1);
+    const xForMinimapIndex = (index: number) => minimap.x + index * minimapXStep;
     const yForAreaValue = (value: number) => bottom - ((value - areaRange.min) / areaRange.span) * 250;
     const yForSplineValue = (value: number) => bottom - ((value - splineRange.min) / splineRange.span) * 240;
     const yForLineValue = (value: number) => bottom - ((value - lineRange.min) / lineRange.span) * 220 - 4;
     const yForBarValue = (value: number) => bottom - Math.max(8, ((value - barRange.min) / barRange.span) * 140);
+    const yForMinimapAreaValue = (value: number) => minimap.y + minimap.height - ((value - areaRange.min) / areaRange.span) * (minimap.height - 4) - 2;
+    const yForMinimapSplineValue = (value: number) => minimap.y + minimap.height - ((value - splineRange.min) / splineRange.span) * (minimap.height - 4) - 2;
+    const yForMinimapLineValue = (value: number) => minimap.y + minimap.height - ((value - lineRange.min) / lineRange.span) * (minimap.height - 4) - 2;
 
-    const toPoints = (values: Array<number | null>, yForValue: (value: number) => number) =>
+    const toPoints = (values: Array<number | null>, yForValue: (value: number) => number, xGetter = xForIndex, onlyVisible = true) =>
       values.flatMap((value, index) =>
-        value === null
+        value === null || (onlyVisible && (index < safeViewportStart || index >= viewportEnd))
           ? []
           : [{
-              x: xForIndex(index),
+              x: xGetter(index),
               y: yForValue(value),
               value,
               index,
@@ -201,18 +227,40 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
     const splinePoints = toPoints(chartData.spline, yForSplineValue);
     const linePoints = toPoints(chartData.line, yForLineValue);
     const barPoints = toPoints(chartData.bar, yForBarValue);
+    const minimapAreaPoints = toPoints(chartData.area, yForMinimapAreaValue, xForMinimapIndex, false);
+    const minimapSplinePoints = toPoints(chartData.spline, yForMinimapSplineValue, xForMinimapIndex, false);
+    const minimapLinePoints = toPoints(chartData.line, yForMinimapLineValue, xForMinimapIndex, false);
+    const brushWidth = Math.max(28, (visibleCount / totalPoints) * minimap.width);
+    const brushTravel = Math.max(0, minimap.width - brushWidth);
+    const brushX = minimap.x + (maxViewportStart === 0 ? 0 : (safeViewportStart / maxViewportStart) * brushTravel);
 
     return {
       chart,
+      minimap,
+      zoomControl,
       canvasWidth,
       canvasHeight,
       bottom,
       xStep,
+      maxZoom,
+      visibleCount,
+      viewportStart: safeViewportStart,
+      viewportEnd,
+      maxViewportStart,
+      brush: {
+        x: brushX,
+        width: brushWidth,
+      },
       points: {
         area: areaPoints,
         spline: splinePoints,
         line: linePoints,
         bar: barPoints,
+      },
+      minimapPoints: {
+        area: minimapAreaPoints,
+        spline: minimapSplinePoints,
+        line: minimapLinePoints,
       },
       pointByIndex: {
         area: new Map(areaPoints.map((point) => [point.index, point])),
@@ -221,7 +269,7 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
         bar: new Map(barPoints.map((point) => [point.index, point])),
       },
     };
-  }, [chartData, height, visiblePoints, width]);
+  }, [chartData, height, viewportStart, width, zoom]);
 
   const paths = useMemo(() => {
     const areaTop = createSmoothPath(metrics.points.area);
@@ -233,6 +281,9 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
       area: areaPath,
       spline: createSmoothPath(metrics.points.spline),
       line: createLinePath(metrics.points.line),
+      minimapArea: createSmoothPath(metrics.minimapPoints.area),
+      minimapSpline: createSmoothPath(metrics.minimapPoints.spline),
+      minimapLine: createLinePath(metrics.minimapPoints.line),
     };
   }, [metrics]);
 
@@ -254,8 +305,8 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
 
   const updateHover = (event: MouseEvent<SVGRectElement | SVGPathElement>) => {
     const localPoint = getLocalPoint(event);
-    const firstX = metrics.points.area[0].x;
-    const nearest = Math.round((localPoint.x - firstX) / (metrics.xStep || 1));
+    const firstX = metrics.chart.x + 60;
+    const nearest = Math.round((localPoint.x - firstX) / (metrics.xStep || 1)) + metrics.viewportStart;
     const isNearSpline = metrics.points.spline.some((point, index, points) => {
       const next = points[index + 1];
 
@@ -274,6 +325,16 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
     setIsSplineHovered(isNearSpline);
   };
 
+  const updateViewportFromMinimap = (event: MouseEvent<SVGRectElement>) => {
+    const localPoint = getLocalPoint(event);
+    const relativeX = clamp(localPoint.x - metrics.minimap.x, 0, metrics.minimap.width);
+    const centeredIndex = Math.round((relativeX / metrics.minimap.width) * chartData.labels.length - metrics.visibleCount / 2);
+
+    setViewportStart(clamp(centeredIndex, 0, metrics.maxViewportStart));
+    setHoverIndex(null);
+    setIsSplineHovered(false);
+  };
+
   const tooltipWidth = 370;
   const tooltipHeight = 176;
   const tooltipGap = 28;
@@ -288,8 +349,7 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
 
   return (
     <div className="chart-shell" style={{ width, height }}>
-      <div className="chart-scroll" ref={scrollRef}>
-        <div className="chart-stage" style={{ width: metrics.canvasWidth, height: metrics.canvasHeight }}>
+      <div className="chart-stage" style={{ width: metrics.canvasWidth, height: metrics.canvasHeight }}>
           <svg className="chart-svg" width={metrics.canvasWidth} height={metrics.canvasHeight} viewBox={`0 0 ${metrics.canvasWidth} ${metrics.canvasHeight}`}>
             <defs>
               <clipPath id="plot-clip">
@@ -385,7 +445,48 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
                 />
               ))}
             </g>
+
+            <g className="minimap">
+              <rect className="minimap-frame" x={metrics.minimap.x} y={metrics.minimap.y} width={metrics.minimap.width} height={metrics.minimap.height} rx={4} />
+              <path className="minimap-area" d={paths.minimapArea} />
+              <path className="minimap-spline" d={paths.minimapSpline} />
+              <path className="minimap-line" d={paths.minimapLine} />
+              <rect
+                className="minimap-hit-area"
+                x={metrics.minimap.x}
+                y={metrics.minimap.y}
+                width={metrics.minimap.width}
+                height={metrics.minimap.height}
+                onMouseDown={(event) => {
+                  setIsMinimapDragging(true);
+                  updateViewportFromMinimap(event);
+                }}
+                onMouseMove={(event) => {
+                  if (isMinimapDragging) {
+                    updateViewportFromMinimap(event);
+                  }
+                }}
+                onMouseUp={() => setIsMinimapDragging(false)}
+                onMouseLeave={() => setIsMinimapDragging(false)}
+              />
+              <rect className="minimap-brush" x={metrics.brush.x} y={metrics.minimap.y} width={metrics.brush.width} height={metrics.minimap.height} rx={4} />
+            </g>
           </svg>
+
+          <label className="zoom-control" style={{ left: metrics.zoomControl.x, top: metrics.zoomControl.y, width: metrics.zoomControl.width }}>
+            <span>Scale</span>
+            <input
+              type="range"
+              min={1}
+              max={metrics.maxZoom}
+              step={0.1}
+              value={zoom}
+              onChange={(event) => {
+                setZoom(Number(event.target.value));
+                setViewportStart((currentStart) => clamp(currentStart, 0, metrics.maxViewportStart));
+              }}
+            />
+          </label>
 
           <div
             className={`chart-tooltip ${hoverIndex === null ? '' : 'chart-tooltip--visible'}`}
@@ -405,7 +506,6 @@ export function TimeSeriesChart({ data, width = 1000, height = 400, visiblePoint
             ))}
           </div>
         </div>
-      </div>
     </div>
   );
 }

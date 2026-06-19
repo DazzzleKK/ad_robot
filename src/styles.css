@@ -52,35 +52,14 @@ body {
 }
 
 .chart-shell {
+  position: relative;
   overflow: hidden;
   background: #ffe3e7;
-}
-
-.chart-scroll {
-  width: 100%;
-  height: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .chart-stage {
   position: relative;
   min-width: 100%;
-}
-
-.chart-scroll::-webkit-scrollbar {
-  height: 10px;
-}
-
-.chart-scroll::-webkit-scrollbar-track {
-  background: #f4f4f4;
-  border-top: 1px solid #d7d7d7;
-}
-
-.chart-scroll::-webkit-scrollbar-thumb {
-  background: #c9cdd2;
-  border: 2px solid #f4f4f4;
-  border-radius: 8px;
 }
 
 .chart-svg {
@@ -212,6 +191,63 @@ body {
 
 .hover-plane {
   fill: transparent;
+}
+
+.minimap-frame {
+  fill: rgba(255, 255, 255, 0.45);
+  stroke: #bfc8c4;
+  stroke-width: 1;
+}
+
+.minimap-area {
+  fill: none;
+  stroke: rgba(255, 224, 68, 0.7);
+  stroke-width: 2;
+}
+
+.minimap-spline {
+  fill: none;
+  stroke: rgba(10, 140, 0, 0.8);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.minimap-line {
+  fill: none;
+  stroke: rgba(184, 0, 243, 0.75);
+  stroke-width: 1.5;
+}
+
+.minimap-hit-area {
+  cursor: grab;
+  fill: transparent;
+}
+
+.minimap-hit-area:active {
+  cursor: grabbing;
+}
+
+.minimap-brush {
+  fill: rgba(47, 112, 243, 0.14);
+  pointer-events: none;
+  stroke: rgba(47, 112, 243, 0.9);
+  stroke-width: 2;
+}
+
+.zoom-control {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #4f5961;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.zoom-control input {
+  width: 100%;
+  accent-color: #2f70f3;
 }
 
 .area-point-halo {

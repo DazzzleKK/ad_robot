@@ -21,7 +21,7 @@ test('chart hover interactions match expected behavior', async ({ page }) => {
     return;
   }
 
-  await page.mouse.move(box.x + 475, box.y + 210);
+  await page.mouse.move(box.x + 690, box.y + 210);
   await expect(tooltip).toHaveCSS('opacity', '1');
   await expect(activeHoverPoints).toHaveCount(1);
   await expect(tooltip).toContainText('13.06.2026');
@@ -29,7 +29,7 @@ test('chart hover interactions match expected behavior', async ({ page }) => {
 
   await page.screenshot({ path: 'playwright-report-screens/chart-hover.png', fullPage: true });
 
-  await page.mouse.move(box.x + 595, box.y + 132);
+  await page.mouse.move(box.x + 870, box.y + 132);
   await expect(tooltip).toContainText('14.06.2026');
   await expect(activeHoverPoints).toHaveCount(1);
 
@@ -49,11 +49,11 @@ test('chart hover interactions match expected behavior', async ({ page }) => {
     expect(separated).toBe(true);
   }
 
-  await page.mouse.move(box.x + 380, box.y + 235);
+  await page.mouse.move(box.x + 504, box.y + 235);
   await expect(tooltip).toHaveCSS('opacity', '1');
   await expect(tooltip).toContainText('12.06.2026');
 
-  await page.mouse.move(box.x + 145, box.y + 72);
+  await page.mouse.move(box.x + 145, box.y + 120);
   await page.waitForTimeout(550);
   await expect(spline).toHaveCSS('stroke-width', '2px');
 
@@ -112,4 +112,32 @@ test('chart point form skips empty series values', async ({ page }) => {
   expect(data.spline).toContainEqual({ date: '15.06.2026', value: 410.2 });
   expect(data.line).toContainEqual({ date: '15.06.2026', value: 96 });
   expect(data.bar).not.toContainEqual(expect.objectContaining({ date: '15.06.2026' }));
+});
+
+test('chart can zoom and move through the minimap', async ({ page }) => {
+  await page.goto('/');
+
+  const longData = {
+    area: Array.from({ length: 12 }, (_, index) => ({ date: `${String(index + 1).padStart(2, '0')}.07.2026`, value: 20 + index * 4 })),
+    spline: Array.from({ length: 12 }, (_, index) => ({ date: `${String(index + 1).padStart(2, '0')}.07.2026`, value: 300 - index * 12 })),
+    line: Array.from({ length: 12 }, (_, index) => ({ date: `${String(index + 1).padStart(2, '0')}.07.2026`, value: 10 + index * 8 })),
+    bar: Array.from({ length: 12 }, (_, index) => ({ date: `${String(index + 1).padStart(2, '0')}.07.2026`, value: 0.4 + index * 0.05 })),
+  };
+
+  await page.locator('.data-editor summary').click();
+  await page.locator('.data-editor__textarea').fill(JSON.stringify(longData, null, 2));
+  await page.locator('.data-editor__button').click();
+  await page.locator('.zoom-control input').fill('4');
+
+  const chart = page.locator('.chart-shell');
+  const box = await chart.boundingBox();
+  expect(box).not.toBeNull();
+
+  if (!box) {
+    return;
+  }
+
+  await page.mouse.click(box.x + 720, box.y + 355);
+  await page.mouse.move(box.x + 145, box.y + 180);
+  await expect(page.locator('.chart-tooltip')).toContainText('01.07.2026');
 });

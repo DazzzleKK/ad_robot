@@ -90,7 +90,7 @@ bar.push({ date: '13.06.2026', value: 0.79 });
 
 Dates may be skipped in any series. The component builds the chart from the union of all dates. If a series has no point for the hovered date, the tooltip shows `-` for that value and no hover marker is drawn for that series on that date.
 
-JSON dates use the `DD.MM.YYYY` format. The add-point form converts browser date picker values to that format. Dates are sorted chronologically. The demo uses 5 chart dates. The component supports more points; when there are more than 10 dates, the chart canvas expands and the wrapper enables horizontal scrolling.
+JSON dates use the `DD.MM.YYYY` format. The add-point form converts browser date picker values to that format. Dates are sorted chronologically. The chart container stays `1000x450` by default. Use the scale slider and minimap under the plot to zoom into a date range and move the visible window.
 
 ## Behavior
 
