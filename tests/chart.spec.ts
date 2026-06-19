@@ -98,7 +98,7 @@ test('chart point form skips empty series values', async ({ page }) => {
   await page.goto('/');
 
   await page.locator('.point-editor summary').click();
-  await page.locator('.point-editor__field').filter({ hasText: 'Date' }).locator('input').fill('2026-06-15');
+  await page.locator('.point-editor__field').filter({ hasText: 'Date' }).locator('input').fill('2026-06-22');
   await page.locator('.point-editor__field').filter({ hasText: 'Cost' }).locator('input').fill('72.4');
   await page.locator('.point-editor__field').filter({ hasText: 'ROI confirmed' }).locator('input').fill('410.2');
   await page.locator('.point-editor__field').filter({ hasText: 'Conversions' }).locator('input').fill('96');
@@ -108,10 +108,10 @@ test('chart point form skips empty series values', async ({ page }) => {
   const jsonValue = await page.locator('.data-editor__textarea').inputValue();
   const data = JSON.parse(jsonValue);
 
-  expect(data.area).toContainEqual({ date: '15.06.2026', value: 72.4 });
-  expect(data.spline).toContainEqual({ date: '15.06.2026', value: 410.2 });
-  expect(data.line).toContainEqual({ date: '15.06.2026', value: 96 });
-  expect(data.bar).not.toContainEqual(expect.objectContaining({ date: '15.06.2026' }));
+  expect(data.area).toContainEqual({ date: '22.06.2026', value: 72.4 });
+  expect(data.spline).toContainEqual({ date: '22.06.2026', value: 410.2 });
+  expect(data.line).toContainEqual({ date: '22.06.2026', value: 96 });
+  expect(data.bar).not.toContainEqual(expect.objectContaining({ date: '22.06.2026' }));
 });
 
 test('chart can zoom and move through the minimap', async ({ page }) => {

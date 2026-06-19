@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 
 export type TimeSeriesChartData = {
   area: TimeSeriesChartPoint[];
@@ -33,6 +33,7 @@ type Props = {
   data: TimeSeriesChartData;
   width?: number;
   height?: number;
+  initialVisibleCount?: number;
 };
 
 const colors: Record<ChartSeries, string> = {
@@ -130,7 +131,14 @@ const normalizeData = (data: TimeSeriesChartData): NormalizedChartData => {
 
 const createLinePath = (points: Point[]) => points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
 
-const createSmoothPath = (points: Point[]) => {
+type PathBounds = {
+  minY: number;
+  maxY: number;
+};
+
+const clampY = (value: number, bounds: PathBounds) => clamp(value, bounds.minY, bounds.maxY);
+
+const createSmoothPath = (points: Point[], bounds?: PathBounds) => {
   if (points.length < 2) {
     return points[0] ? `M ${points[0].x} ${points[0].y}` : '';
   }
@@ -148,14 +156,15 @@ const createSmoothPath = (points: Point[]) => {
     const cp2x = next.x - (afterNext.x - current.x) * smoothing;
     const cp2y = next.y - (afterNext.y - current.y) * smoothing;
 
-    commands.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`);
+    commands.push(`C ${cp1x} ${bounds ? clampY(cp1y, bounds) : cp1y}, ${cp2x} ${bounds ? clampY(cp2y, bounds) : cp2y}, ${next.x} ${next.y}`);
   }
 
   return commands.join(' ');
 };
 
-export function TimeSeriesChart({ data, width = 1000, height = 450 }: Props) {
+export function TimeSeriesChart({ data, width = 1000, height = 420, initialVisibleCount = 5 }: Props) {
   const chartData = useMemo(() => normalizeData(data), [data]);
+  const initializedViewRef = useRef(false);
 
   const [zoom, setZoom] = useState(1);
   const [viewportStart, setViewportStart] = useState(0);
@@ -164,6 +173,17 @@ export function TimeSeriesChart({ data, width = 1000, height = 450 }: Props) {
   const [tooltipIndex, setTooltipIndex] = useState(0);
   const [tooltipPoint, setTooltipPoint] = useState({ x: 0, y: 0 });
   const [isSplineHovered, setIsSplineHovered] = useState(false);
+
+  useEffect(() => {
+    if (initializedViewRef.current || chartData.labels.length === 0) {
+      return;
+    }
+
+    const nextZoom = clamp(chartData.labels.length / initialVisibleCount, 1, Math.max(1, chartData.labels.length / 2));
+    setZoom(nextZoom);
+    setViewportStart(0);
+    initializedViewRef.current = true;
+  }, [chartData.labels.length, initialVisibleCount]);
 
   const metrics = useMemo(() => {
     const totalPoints = chartData.labels.length;
@@ -210,6 +230,14 @@ export function TimeSeriesChart({ data, width = 1000, height = 450 }: Props) {
     const yForMinimapAreaValue = (value: number) => minimap.y + minimap.height - ((value - areaRange.min) / areaRange.span) * (minimap.height - 4) - 2;
     const yForMinimapSplineValue = (value: number) => minimap.y + minimap.height - ((value - splineRange.min) / splineRange.span) * (minimap.height - 4) - 2;
     const yForMinimapLineValue = (value: number) => minimap.y + minimap.height - ((value - lineRange.min) / lineRange.span) * (minimap.height - 4) - 2;
+    const plotBounds = {
+      minY: chart.y,
+      maxY: bottom,
+    };
+    const minimapBounds = {
+      minY: minimap.y,
+      maxY: minimap.y + minimap.height,
+    };
 
     const toPoints = (values: Array<number | null>, yForValue: (value: number) => number, xGetter = xForIndex, onlyVisible = true) =>
       values.flatMap((value, index) =>
@@ -272,17 +300,27 @@ export function TimeSeriesChart({ data, width = 1000, height = 450 }: Props) {
   }, [chartData, height, viewportStart, width, zoom]);
 
   const paths = useMemo(() => {
-    const areaTop = createSmoothPath(metrics.points.area);
+    const plotBounds = {
+      minY: metrics.chart.y,
+      maxY: metrics.bottom,
+    };
+    const areaTop = createSmoothPath(metrics.points.area, plotBounds);
     const firstArea = metrics.points.area[0];
     const lastArea = metrics.points.area[metrics.points.area.length - 1];
     const areaPath = firstArea && lastArea ? `${areaTop} L ${lastArea.x} ${metrics.bottom} L ${firstArea.x} ${metrics.bottom} Z` : '';
 
     return {
       area: areaPath,
-      spline: createSmoothPath(metrics.points.spline),
+      spline: createSmoothPath(metrics.points.spline, plotBounds),
       line: createLinePath(metrics.points.line),
-      minimapArea: createSmoothPath(metrics.minimapPoints.area),
-      minimapSpline: createSmoothPath(metrics.minimapPoints.spline),
+      minimapArea: createSmoothPath(metrics.minimapPoints.area, {
+        minY: metrics.minimap.y,
+        maxY: metrics.minimap.y + metrics.minimap.height,
+      }),
+      minimapSpline: createSmoothPath(metrics.minimapPoints.spline, {
+        minY: metrics.minimap.y,
+        maxY: metrics.minimap.y + metrics.minimap.height,
+      }),
       minimapLine: createLinePath(metrics.minimapPoints.line),
     };
   }, [metrics]);
