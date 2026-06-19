@@ -1,0 +1,308 @@
+:root {
+  color: #1f1f1f;
+  background: #dbe7f2;
+  font-family: Arial, Helvetica, sans-serif;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+.page-shell {
+  display: grid;
+  gap: 28px;
+  justify-content: center;
+  padding: 28px;
+}
+
+.demo-panel {
+  width: 1000px;
+}
+
+.chart-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 10px;
+}
+
+.chart-heading h1,
+.chart-heading h2,
+.chart-heading p {
+  margin: 0;
+}
+
+.chart-heading h1,
+.chart-heading h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.chart-heading p {
+  color: #4f5961;
+  font-size: 14px;
+}
+
+.chart-shell {
+  overflow: hidden;
+  background: #ffe3e7;
+}
+
+.chart-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart-stage {
+  position: relative;
+  min-width: 100%;
+}
+
+.chart-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.chart-scroll::-webkit-scrollbar-track {
+  background: #f4f4f4;
+  border-top: 1px solid #d7d7d7;
+}
+
+.chart-scroll::-webkit-scrollbar-thumb {
+  background: #c9cdd2;
+  border: 2px solid #f4f4f4;
+  border-radius: 8px;
+}
+
+.chart-svg {
+  display: block;
+  min-width: 100%;
+  cursor: default;
+}
+
+.plot-frame {
+  fill: transparent;
+  stroke: #bfc8c4;
+  stroke-width: 1.5;
+}
+
+.area-fill {
+  fill: rgba(255, 241, 105, 0.46);
+}
+
+.area-top-line {
+  fill: none;
+  stroke: rgba(255, 244, 112, 0.7);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bar {
+  fill: #2f70f3;
+}
+
+.spline-line {
+  fill: none;
+  stroke: #0a8c00;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 6;
+  transition: stroke-width 0.5s ease;
+}
+
+.spline-line--hovered {
+  stroke-width: 2;
+}
+
+.line-series {
+  fill: none;
+  stroke: #b800f3;
+  stroke-width: 2;
+}
+
+.line-marker,
+.line-hover-fill {
+  fill: #b800f3;
+}
+
+.line-hover-marker {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0;
+  transition: stroke-width 0.22s ease;
+}
+
+.line-marker,
+.hover-points,
+.hover-points * {
+  pointer-events: none;
+}
+
+.hover-points {
+  pointer-events: none;
+}
+
+.hover-point-visual {
+  opacity: 0;
+  scale: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    opacity 0.18s ease,
+    scale 0.22s ease;
+}
+
+.line-hover-fill,
+.line-hover-marker {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.line-hover-fill {
+  scale: 1;
+  transition:
+    opacity 0.18s ease,
+    scale 0.22s ease;
+}
+
+.line-hover-marker {
+  transition:
+    opacity 0.18s ease,
+    stroke-width 0.22s ease;
+}
+
+.hover-point-set--visible .hover-point-visual,
+.hover-point-set--visible .line-hover-fill,
+.hover-point-set--visible .line-hover-marker {
+  opacity: 1;
+  scale: 1;
+}
+
+.hover-point-set--visible .line-hover-fill {
+  scale: 0.75;
+}
+
+.hover-point-set--visible .line-hover-marker {
+  stroke-width: 2;
+}
+
+.spline-hit-area {
+  fill: none;
+  stroke: transparent;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 24;
+  pointer-events: stroke;
+}
+
+.hover-plane {
+  fill: transparent;
+}
+
+.area-point-halo {
+  fill: rgba(255, 240, 89, 0.4);
+}
+
+.area-point {
+  fill: #fff27a;
+  stroke: #fffdf0;
+  stroke-width: 2;
+}
+
+.spline-point-halo {
+  fill: rgba(10, 140, 0, 0.24);
+}
+
+.spline-point {
+  fill: #0a8c00;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.line-point-halo {
+  fill: rgba(184, 0, 243, 0.22);
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 15px 18px 16px;
+  background: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 2px 11px rgba(0, 0, 0, 0.42);
+  color: #252525;
+  font-size: 26px;
+  line-height: 1.12;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s ease,
+    opacity 0.22s ease,
+    scale 0.22s ease;
+  scale: 0.96;
+  will-change: transform, opacity, scale;
+  z-index: 2;
+}
+
+.chart-tooltip--visible {
+  opacity: 1;
+  scale: 1;
+}
+
+.tooltip-date {
+  margin-bottom: 6px;
+  font-size: 22px;
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+.tooltip-dot {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.tooltip-row strong {
+  font-weight: 800;
+}
+
+@media (max-width: 1060px) {
+  .page-shell {
+    justify-content: stretch;
+    padding: 18px;
+  }
+
+  .demo-panel {
+    width: 100%;
+  }
+
+  .chart-shell {
+    width: 100% !important;
+  }
+
+  .chart-heading {
+    display: block;
+  }
+
+  .chart-heading p {
+    margin-top: 4px;
+  }
+}

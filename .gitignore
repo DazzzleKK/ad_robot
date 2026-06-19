@@ -1,0 +1,9 @@
+node_modules
+dist
+.idea
+playwright-report-screens
+test-results
+playwright-report
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
